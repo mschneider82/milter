@@ -1,6 +1,7 @@
 package milter
 
 import (
+	"io"
 	"net"
 	"net/textproto"
 )
@@ -40,14 +41,11 @@ type HandleCommand interface {
 }
 
 type HandleSession interface {
-	// Init is called on begin of a new Session (before Connect())
-	Init()
-
 	// Abort is called on handle SMFIC_ABORT command
 	Abort()
 
 	// Disconnect is called at the end of the SMTP session
-	Disconnect()
+	io.Closer
 }
 
 // Milter is an interface for milter callback handlers

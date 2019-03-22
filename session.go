@@ -234,9 +234,8 @@ func (s *milterSession) Process(msg *Message) (Response, error) {
 func (s *milterSession) HandleMilterCommands() {
 	// close session socket on exit
 	defer s.sock.Close()
-	defer s.milter.Disconnect()
+	defer s.milter.Close()
 
-	s.milter.Init()
 	for {
 		// ReadPacket
 		msg, err := s.ReadPacket()
@@ -268,7 +267,6 @@ func (s *milterSession) HandleMilterCommands() {
 			if !resp.Continue() {
 				return
 			}
-
 		}
 	}
 }
