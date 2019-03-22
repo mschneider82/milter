@@ -5,11 +5,10 @@ import (
 	"net/textproto"
 )
 
-// Milter is an interface for milter callback handlers
-type Milter interface {
+type HandleCommand interface {
 	// Connect is called to provide SMTP connection data for incoming message
 	//   supress with NoConnect
-	Connect(host string, family string, port uint16, addr net.IP, m *Modifier) (Response, error)
+	Connect(host, family string, port uint16, addr net.IP, m *Modifier) (Response, error)
 
 	// Helo is called to process any HELO/EHLO related filters
 	//   supress with NoHelo
@@ -25,7 +24,7 @@ type Milter interface {
 
 	// Header is called once for each header in incoming message
 	//   supress with NoHeaders
-	Header(name string, value string, m *Modifier) (Response, error)
+	Header(name, value string, m *Modifier) (Response, error)
 
 	// Headers is called when all message headers have been processed
 	//   supress with NoHeaders
@@ -38,4 +37,21 @@ type Milter interface {
 	// Body is called at the end of each message
 	//   all changes to message's content & attributes must be done here
 	Body(m *Modifier) (Response, error)
+}
+
+type HandleSession interface {
+	// Init is called on begin of a new Session (before Connect())
+	Init()
+
+	// Abort is called on handle SMFIC_ABORT command
+	Abort()
+
+	// Disconnect is called at the end of the SMTP session
+	Disconnect()
+}
+
+// Milter is an interface for milter callback handlers
+type Milter interface {
+	HandleCommand
+	HandleSession
 }
