@@ -264,9 +264,6 @@ func (s *milterSession) HandleMilterCommands() {
 				return
 			}
 
-			if !resp.Continue() {
-				return
-			}
 		}
 	}
 }
