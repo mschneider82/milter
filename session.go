@@ -57,7 +57,7 @@ func (s *milterSession) ReadPacket() (*Message, error) {
 	}
 
 	// read packet data
-	data := make([]byte, length)
+	data := make([]byte, length, length)
 	if _, err := io.ReadFull(s.sock, data); err != nil {
 		return nil, err
 	}

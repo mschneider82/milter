@@ -48,9 +48,9 @@ func (m *Modifier) Quarantine(reason string) error {
 
 // ChangeHeader replaces the header at the specified position with a new one
 func (m *Modifier) ChangeHeader(index int, name, value string) error {
-	buffer := new(bytes.Buffer)
+	var buffer bytes.Buffer
 	// encode header index in the beginning
-	if err := binary.Write(buffer, binary.BigEndian, uint32(index)); err != nil {
+	if err := binary.Write(&buffer, binary.BigEndian, uint32(index)); err != nil {
 		return err
 	}
 	// add header name and value to buffer
