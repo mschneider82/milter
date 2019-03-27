@@ -59,6 +59,9 @@ func (s *Server) RunServer() error {
 	for {
 		// accept connection from client
 		conn, err := s.Listener.Accept()
+		if conn == nil {
+			return nil
+		}
 		if err != nil {
 			return err
 		}
