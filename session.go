@@ -263,10 +263,6 @@ func (s *milterSession) HandleMilterCommands() {
 				log.Printf("Error writing packet: %v", err)
 				return
 			}
-
-			if !resp.Continue() {
-				return
-			}
 		}
 	}
 }
