@@ -68,10 +68,10 @@ func (s *Server) RunServer() error {
 			return err
 		}
 
+		s.Add(1)
 		go func() {
 			defer handlePanic(s.ErrHandlers)
 			defer s.Done()
-			s.Add(1)
 			s.handleCon(conn)
 		}()
 	}
