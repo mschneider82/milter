@@ -17,7 +17,6 @@ import (
 
 /* TestMilter object */
 type TestMilter struct {
-	Milter
 	multipart bool
 	message   *bytes.Buffer
 }
@@ -34,6 +33,8 @@ func (e *TestMilter) Disconnect() {
 func (e *TestMilter) Connect(name, value string, port uint16, ip net.IP, m *Modifier) (Response, error) {
 	return RespContinue, nil
 }
+
+func (e *TestMilter) Helo(h string, m *Modifier) (Response, error) { return RespContinue, nil }
 
 func (e *TestMilter) MailFrom(name string, m *Modifier) (Response, error) {
 	return RespContinue, nil
