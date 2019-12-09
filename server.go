@@ -58,6 +58,8 @@ func (s *Server) RunServer() error {
 	if s.Listener == nil {
 		return errors.New("no listen addr specified")
 	}
+	s.quit = make(chan bool)
+	s.exited = make(chan bool)
 	for {
 		select {
 		case <-s.quit:
