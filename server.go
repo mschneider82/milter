@@ -47,9 +47,10 @@ type Server struct {
 // Close for graceful shutdown
 // Stop accepting new connections
 // And wait until processing connections ends
-func (s *Server) Close() {
+func (s *Server) Close() error {
 	close(s.quit)
 	<-s.exited
+	return nil
 }
 
 // RunServer starts milter server via provided listener
