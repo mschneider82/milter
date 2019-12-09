@@ -4,6 +4,7 @@ package milter
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"sync"
 )
@@ -26,8 +27,8 @@ func RunServer(server net.Listener, logger Logger, init MilterInit, handlers ...
 }
 
 // Close server listener and wait worked process
-func Close() (err error) {
-	return defaultServer.Close()
+func Close() {
+	defaultServer.Close()
 }
 
 // Server Milter for handling and processing incoming connections
@@ -39,17 +40,16 @@ type Server struct {
 	ErrHandlers   []func(error)
 	Logger        Logger
 	sync.WaitGroup
+	quit   chan bool
+	exited chan bool
 }
 
 // Close for graceful shutdown
 // Stop accepting new connections
 // And wait until processing connections ends
-func (s *Server) Close() (err error) {
-	if s.Listener != nil {
-		err = s.Listener.Close()
-	}
-	s.Wait()
-	return err
+func (s *Server) Close() {
+	close(s.quit)
+	<-s.exited
 }
 
 // RunServer starts milter server via provided listener
@@ -57,23 +57,29 @@ func (s *Server) RunServer() error {
 	if s.Listener == nil {
 		return errors.New("no listen addr specified")
 	}
-
 	for {
-		// accept connection from client
-		conn, err := s.Listener.Accept()
-		if conn == nil {
+		select {
+		case <-s.quit:
+			s.Listener.Close()
+			s.Wait()
+			close(s.exited)
 			return nil
-		}
-		if err != nil {
-			return err
-		}
-
-		go func() {
-			defer handlePanic(s.ErrHandlers)
-			defer s.Done()
+		default:
+			conn, err := s.Listener.Accept()
+			if err != nil {
+				if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
+					continue
+				}
+				log.Printf("Error: Failed to accept connection: %s", err.Error())
+				continue
+			}
 			s.Add(1)
-			s.handleCon(conn)
-		}()
+			go func() {
+				defer handlePanic(s.ErrHandlers)
+				defer s.Done()
+				s.handleCon(conn)
+			}()
+		}
 	}
 }
 

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"io"
+
 	"github.com/mschneider82/milterclient"
 )
 
@@ -86,7 +88,7 @@ func (e *TestMilter) BodyChunk(chunk []byte, m *Modifier) (Response, error) {
 func (e *TestMilter) Body(m *Modifier) (Response, error) {
 	// prepare buffer
 	_ = bytes.NewReader(e.message.Bytes())
-
+	fmt.Println("size of body: ", e.message.Len())
 	m.AddHeader("name", "value")
 	m.AddRecipient("some.new.rcpt@example.com")
 	m.ChangeFrom("new.from@example.com")
@@ -135,7 +137,6 @@ func TestMilterClient(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//defer socket.Close()
 
 	// run server
 	go myRunServer(socket)
@@ -148,8 +149,15 @@ func TestMilterClient(t *testing.T) {
 	}
 	defer eml.Close()
 
+	buf := new(bytes.Buffer)
+	for i := 0; i < 1000000; i++ {
+		buf.WriteString("fsdokfpsdkofksdopfkpsodfkpsdkfopsdkfposdkfposdkfposdkfopsdkfopsdkfposdfkposdffsdfsdfsdstring")
+	}
+
+	bigmailreader := io.MultiReader(eml, buf)
+
 	msgID := milterclient.GenMtaID(12)
-	last, err := milterclient.SendEml(eml, "127.0.0.1:12349", "from@unittest.de", "to@unittest.de", "", "", msgID, false, 5)
+	last, err := milterclient.SendEml(bigmailreader, "127.0.0.1:12349", "from@unittest.de", "to@unittest.de", "", "", msgID, false, 5)
 	if err != nil {
 		t.Errorf("Error sending eml to milter: %v", err)
 	}
@@ -158,5 +166,5 @@ func TestMilterClient(t *testing.T) {
 	if last != 'e' {
 		t.Errorf("Excepted Accept from Milter, got %v", last)
 	}
-	socket.Close()
+	//socket.Close()
 }
