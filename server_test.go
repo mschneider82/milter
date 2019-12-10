@@ -41,6 +41,9 @@ func (e *TestMilter) MailFrom(name string, m *Modifier) (Response, error) {
 }
 
 func (e *TestMilter) RcptTo(name string, m *Modifier) (Response, error) {
+	if name == "panic@example.com" {
+		panic("panic@example.com")
+	}
 	return RespContinue, nil
 }
 
@@ -102,6 +105,12 @@ func (e *TestMilter) Body(m *Modifier) (Response, error) {
 	return RespAccept, nil
 }
 
+type logger struct{}
+
+func (f logger) Printf(format string, v ...interface{}) {
+	fmt.Printf(format, v...)
+}
+
 /* myRunServer creates new Milter instance */
 func myRunServer(socket net.Listener) {
 	// declare milter init function
@@ -112,17 +121,21 @@ func myRunServer(socket net.Listener) {
 	}
 
 	errhandler := func(e error) {
-		fmt.Printf("Error happened: %s", e.Error())
+		fmt.Printf("Panic happend: %s\n", e.Error())
 	}
 
 	server := Server{
 		Listener:      socket,
 		MilterFactory: init,
 		ErrHandlers:   []func(error){errhandler},
+		Logger:        &logger{},
 	}
 	defer server.Close()
 	// start server
-	server.RunServer()
+	err := server.RunServer()
+	if err != nil {
+		fmt.Printf("Error happened: %s\n", err.Error())
+	}
 
 }
 
@@ -167,5 +180,12 @@ func TestMilterClient(t *testing.T) {
 	if last != 'e' {
 		t.Errorf("Excepted Accept from Milter, got %v", last)
 	}
-	//socket.Close()
+
+	eml.Seek(0, 0)
+	bigmailreader = io.MultiReader(eml, buf)
+	_, err = milterclient.SendEml(bigmailreader, "127.0.0.1:12349", "from@unittest.de", "panic@example.com", "", "", msgID, false, 2)
+	if err == nil {
+		t.Errorf("should be a panic")
+	}
+	fmt.Printf("err: %s \n", err.Error())
 }

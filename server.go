@@ -4,9 +4,9 @@ package milter
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"sync"
+	"time"
 )
 
 var defaultServer Server
@@ -73,7 +73,12 @@ func (s *Server) RunServer() error {
 				if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
 					continue
 				}
-				log.Printf("Error: Failed to accept connection: %s", err.Error())
+				s.Logger.Printf("Error: Failed to accept connection: %s", err.Error())
+				time.Sleep(500 * time.Millisecond)
+				continue
+			}
+			if conn == nil {
+				s.Logger.Printf("Error: conn is nil")
 				continue
 			}
 			s.Add(1)
