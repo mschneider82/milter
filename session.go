@@ -142,7 +142,7 @@ func (m *milterSession) WritePacket(msg *Message) error {
 // Process processes incoming milter commands
 func (m *milterSession) Process(msg *Message) (Response, error) {
 	switch msg.Code {
-	case 'A':
+	case SMFIC_ABORT:
 		// abort current message and start over
 		m.headers = nil
 		m.macros = nil
@@ -155,11 +155,11 @@ func (m *milterSession) Process(msg *Message) (Response, error) {
 
 		return nil, nil
 
-	case 'B':
+	case SMFIC_BODY:
 		// body chunk
 		return m.milter.BodyChunk(msg.Data, newModifier(m))
 
-	case 'C':
+	case SMFIC_CONNECT:
 		// new connection, get hostname
 		Hostname := readCString(msg.Data)
 		msg.Data = msg.Data[len(Hostname)+1:]
@@ -195,7 +195,7 @@ func (m *milterSession) Process(msg *Message) (Response, error) {
 			net.ParseIP(Address),
 			newModifier(m))
 
-	case 'D':
+	case SMFIC_MACRO:
 		// define macros
 		m.macros = make(map[string]string)
 		// convert data to Go strings
@@ -209,17 +209,17 @@ func (m *milterSession) Process(msg *Message) (Response, error) {
 		// do not send response
 		return nil, nil
 
-	case 'E':
-		// call and return milter handler
+	case SMFIC_BODYEOB:
+		// End of body marker
 		return m.milter.Body(newModifier(m))
 
-	case 'H':
-		// helo command
+	case SMFIC_HELO:
+		// helo command HELO/EHLO name
 		name := strings.TrimSuffix(string(msg.Data), null)
 		return m.milter.Helo(name, newModifier(m))
 
-	case 'L':
-		// make sure headers is initialized
+	case SMFIC_HEADER:
+		// make sure headers is initialized - Mail header
 		if m.headers == nil {
 			m.headers = make(textproto.MIMEHeader)
 		}
@@ -231,7 +231,8 @@ func (m *milterSession) Process(msg *Message) (Response, error) {
 			return m.milter.Header(HeaderData[0], HeaderData[1], newModifier(m))
 		}
 
-	case 'M':
+	case SMFIC_MAIL:
+		// MAIL FROM: information
 		m.mailID = m.genRandomID(12)
 		// Call Init for a new Mail
 		m.milter.Init(m.sessionID, m.mailID)
@@ -239,12 +240,12 @@ func (m *milterSession) Process(msg *Message) (Response, error) {
 		envfrom := readCString(msg.Data)
 		return m.milter.MailFrom(strings.ToLower(strings.Trim(envfrom, "<>")), newModifier(m))
 
-	case 'N':
+	case SMFIC_EOH:
 		// end of headers
 		return m.milter.Headers(m.headers, newModifier(m))
 
-	case 'O':
-		// ignore request and prepare response buffer
+	case SMFIC_OPTNEG:
+		// Option negotiation - ignore request and prepare response buffer
 		buffer := new(bytes.Buffer)
 		// prepare response data
 		for _, value := range []uint32{2, uint32(m.actions), uint32(m.protocol)} {
@@ -253,18 +254,20 @@ func (m *milterSession) Process(msg *Message) (Response, error) {
 			}
 		}
 		// build and send packet
-		return NewResponse('O', buffer.Bytes()), nil
+		return NewResponse(SMFIC_OPTNEG, buffer.Bytes()), nil
 
-	case 'Q':
+	case SMFIC_QUIT:
+		// Quit milter communication
 		// client requested session close
 		return nil, ErrCloseSession
 
-	case 'R':
+	case SMFIC_RCPT:
+		// RCPT TO: information
 		// envelope to address
 		envto := readCString(msg.Data)
 		return m.milter.RcptTo(strings.ToLower(strings.Trim(envto, "<>")), newModifier(m))
 
-	case 'T':
+	case SMFIC_DATA:
 		// data, ignore
 
 	default:
