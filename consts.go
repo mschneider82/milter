@@ -38,6 +38,77 @@ const (
 	SMFIR_TEMPFAIL    = 't' // Reject command/recipient with a 4xx (accept/reject action)
 	SMFIR_REPLYCODE   = 'y' // Send specific Nxx reply message (accept/reject action)
 
-	SMFIA_INET  = '4'
-	SMFIA_INET6 = '6'
+	SMFIA_INET    = '4'
+	SMFIA_INET6   = '6'
+	SMFIA_UNIX    = 'L'
+	SMFIA_UNKNOWN = 'U'
+)
+
+const (
+	SMFIS_KEEP    = uint32(20)
+	SMFIS_ABORT   = uint32(21)
+	SMFIS_OPTIONS = uint32(22)
+	SMFIS_NOREPLY = uint32(7)
+)
+
+// Stage is for SetSymList, to tell the MTA what Macros in what Stage we need
+type Stage uint32
+
+const (
+	SMFIM_CONNECT Stage = iota /* 0 connect */
+	SMFIM_HELO                 /* 1 HELO/EHLO */
+	SMFIM_ENVFROM              /* 2 MAIL From */
+	SMFIM_ENVRCPT              /* 3 RCPT To */
+	SMFIM_DATA                 /* 4 DATA */
+	SMFIM_EOM                  /* 5 = end of message (final dot) */
+	SMFIM_EOH                  /* 6 = end of header */
+)
+
+// OptAction sets which actions the milter wants to perform.
+// Multiple options can be set using a bitmask.
+type OptAction uint32
+
+// OptProtocol masks out unwanted parts of the SMTP transaction.
+// Multiple options can be set using a bitmask.
+type OptProtocol uint32
+
+const (
+	// set which actions the milter wants to perform
+	OptNone           OptAction = 0x00  /* SMFIF_NONE no flags */
+	OptAddHeader      OptAction = 0x01  /* SMFIF_ADDHDRS filter may add headers */
+	OptChangeBody     OptAction = 0x02  /* SMFIF_CHGBODY filter may replace body */
+	OptAddRcpt        OptAction = 0x04  /* SMFIF_ADDRCPT filter may add recipients */
+	OptRemoveRcpt     OptAction = 0x08  /* SMFIF_DELRCPT filter may delete recipients */
+	OptChangeHeader   OptAction = 0x10  /* SMFIF_CHGHDRS filter may change/delete headers */
+	OptQuarantine     OptAction = 0x20  /* SMFIF_QUARANTINE filter may quarantine envelope */
+	OptChangeFrom     OptAction = 0x40  /* SMFIF_CHGFROM filter may change "from" (envelope sender) */
+	OptAddRcptPartial OptAction = 0x80  /* SMFIF_ADDRCPT_PAR filter may add recipients, including ESMTP parameter to the envelope.*/
+	OptSetSymList     OptAction = 0x100 /* SMFIF_SETSYMLIST filter can send set of symbols (macros) that it wants */
+	// OptAllActions SMFI_CURR_ACTS Set of all actions in the current milter version */
+	OptAllActions OptAction = OptAddHeader | OptChangeBody | OptAddRcpt | OptRemoveRcpt | OptChangeHeader | OptQuarantine | OptChangeFrom | OptAddRcptPartial | OptSetSymList
+
+	// mask out unwanted parts of the SMTP transaction
+	OptNoConnect    OptProtocol = 0x01       /* SMFIP_NOCONNECT MTA should not send connect info */
+	OptNoHelo       OptProtocol = 0x02       /* SMFIP_NOHELO MTA should not send HELO info */
+	OptNoMailFrom   OptProtocol = 0x04       /* SMFIP_NOMAIL MTA should not send MAIL info */
+	OptNoRcptTo     OptProtocol = 0x08       /* SMFIP_NORCPT MTA should not send RCPT info */
+	OptNoBody       OptProtocol = 0x10       /* SMFIP_NOBODY MTA should not send body (chunk) */
+	OptNoHeaders    OptProtocol = 0x20       /* SMFIP_NOHDRS MTA should not send headers */
+	OptNoEOH        OptProtocol = 0x40       /* SMFIP_NOEOH MTA should not send EOH */
+	OptNrHdr        OptProtocol = 0x80       /* SMFIP_NR_HDR SMFIP_NOHREPL No reply for headers */
+	OptNoUnknown    OptProtocol = 0x100      /* SMFIP_NOUNKNOWN MTA should not send unknown commands */
+	OptNoData       OptProtocol = 0x200      /* SMFIP_NODATA MTA should not send DATA */
+	OptSkip         OptProtocol = 0x400      /* SMFIP_SKIP MTA understands SMFIS_SKIP */
+	OptRcptRej      OptProtocol = 0x800      /* SMFIP_RCPT_REJ MTA should also send rejected RCPTs */
+	OptNrConn       OptProtocol = 0x1000     /* SMFIP_NR_CONN No reply for connect */
+	OptNrHelo       OptProtocol = 0x2000     /* SMFIP_NR_HELO No reply for HELO */
+	OptNrMailFrom   OptProtocol = 0x4000     /* SMFIP_NR_MAIL No reply for MAIL */
+	OptNrRcptTo     OptProtocol = 0x8000     /* SMFIP_NR_RCPT No reply for RCPT */
+	OptNrData       OptProtocol = 0x10000    /* SMFIP_NR_DATA No reply for DATA */
+	OptNrUnknown    OptProtocol = 0x20000    /* SMFIP_NR_UNKN No reply for UNKNOWN */
+	OptNrEOH        OptProtocol = 0x40000    /* SMFIP_NR_EOH No reply for eoh */
+	OptNrBody       OptProtocol = 0x80000    /* SMFIP_NR_BODY No reply for body chunk */
+	OptHdrLeadSpace OptProtocol = 0x100000   /* SMFIP_HDR_LEADSPC header value leading space */
+	OptMDS256K      OptProtocol = 0x10000000 /* SMFIP_MDS_256K MILTER_MAX_DATA_SIZE=256K */
+	OptMDS1M        OptProtocol = 0x20000000 /* SMFIP_MDS_1M MILTER_MAX_DATA_SIZE=1M */
 )

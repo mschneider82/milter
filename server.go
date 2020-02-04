@@ -35,13 +35,28 @@ func Close() {
 // support panic handling via ErrHandler
 // couple of func(error) could be provided for handling error
 type Server struct {
-	Listener      net.Listener
-	MilterFactory MilterInit
-	ErrHandlers   []func(error)
-	Logger        Logger
+	Listener       net.Listener
+	MilterFactory  MilterInit
+	ErrHandlers    []func(error)
+	Logger         Logger
+	SymListFactory *SymListFactory // SymListFactory Optional: Set the list of macros that the milter wants to receive from the MTA for a protocol stage.
 	sync.WaitGroup
 	quit   chan struct{}
 	exited chan struct{}
+}
+
+// SymListFactory Factory to Set the list of macros that the milter wants to receive from the MTA for a protocol Stage (stages has the prefix SMFIM_).
+type SymListFactory struct {
+	m map[Stage]string
+}
+
+// Set the list of macros that the milter wants to receive from the MTA for a protocol Stage (stages has the prefix SMFIM_).
+// list of macros (separated by space). Example: "{rcpt_mailer} {rcpt_host}"
+func (s *SymListFactory) Set(stage Stage, macros string) {
+	if s.m == nil {
+		s.m = make(map[Stage]string)
+	}
+	s.m[stage] = macros
 }
 
 // Close for graceful shutdown
@@ -95,12 +110,17 @@ func (s *Server) RunServer() error {
 func (s *Server) handleCon(conn net.Conn) {
 	// create milter object
 	milter, actions, protocol := s.MilterFactory()
+	var symlists map[Stage]string
+	if s.SymListFactory != nil {
+		symlists = s.SymListFactory.m
+	}
 	session := milterSession{
 		actions:  actions,
 		protocol: protocol,
 		sock:     conn,
 		milter:   milter,
 		logger:   s.Logger,
+		symlists: symlists,
 	}
 	// handle connection commands
 	session.HandleMilterCommands()

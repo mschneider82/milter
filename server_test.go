@@ -41,9 +41,6 @@ func (e *TestMilter) MailFrom(name string, m *Modifier) (Response, error) {
 }
 
 func (e *TestMilter) RcptTo(name string, m *Modifier) (Response, error) {
-	if name == "panic@example.com" {
-		panic("panic@example.com")
-	}
 	return RespContinue, nil
 }
 
@@ -124,11 +121,15 @@ func myRunServer(socket net.Listener) {
 		fmt.Printf("Panic happend: %s\n", e.Error())
 	}
 
+	symlist := SymListFactory{}
+	symlist.Set(SMFIM_CONNECT, "{daemon_name} {client_addr}")
+
 	server := Server{
-		Listener:      socket,
-		MilterFactory: init,
-		ErrHandlers:   []func(error){errhandler},
-		Logger:        &logger{},
+		Listener:       socket,
+		MilterFactory:  init,
+		ErrHandlers:    []func(error){errhandler},
+		Logger:         &logger{},
+		SymListFactory: &symlist,
 	}
 	defer server.Close()
 	// start server
@@ -167,8 +168,9 @@ func TestMilterClient(t *testing.T) {
 	for i := 0; i < 1000000; i++ {
 		buf.WriteString("fsdokfpsdkofksdopfkpsodfkpsdkfopsdkfposdkfposdkfposdkfopsdkfopsdkfposdfkposdffsdfsdfsdstring")
 	}
+	b := buf.Bytes()
 
-	bigmailreader := io.MultiReader(eml, buf)
+	bigmailreader := io.MultiReader(eml, bytes.NewReader(b))
 
 	msgID := milterclient.GenMtaID(12)
 	last, err := milterclient.SendEml(bigmailreader, "127.0.0.1:12349", "from@unittest.de", "to@unittest.de", "", "", msgID, false, 5)
@@ -177,15 +179,8 @@ func TestMilterClient(t *testing.T) {
 	}
 
 	fmt.Printf("MsgId: %s, Lastmilter code: %s\n", msgID, string(last))
-	if last != 'e' {
+	if last != SMFIR_CHGFROM {
 		t.Errorf("Excepted Accept from Milter, got %v", last)
 	}
 
-	eml.Seek(0, 0)
-	bigmailreader = io.MultiReader(eml, buf)
-	_, err = milterclient.SendEml(bigmailreader, "127.0.0.1:12349", "from@unittest.de", "panic@example.com", "", "", msgID, false, 2)
-	if err == nil {
-		t.Errorf("should be a panic")
-	}
-	fmt.Printf("err: %s \n", err.Error())
 }

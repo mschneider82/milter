@@ -20,3 +20,5 @@ and also _test cases using my [milterclient](https://github.com/mschneider82/mil
 * Errors exported
 * Changed: EnvFrom and RcptTo addresses are now always converted to lowercase
 * Added all Protocol Options and Actions from libmilter (session.go)
+* Added SymListFactory to Set the list of macros that the milter wants to receive from the MTA for a protocol stage
+* Refactored to common consts names for Milter Commands
