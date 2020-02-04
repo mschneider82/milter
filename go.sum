@@ -1,4 +1,5 @@
-github.com/mschneider82/milterclient v0.0.0-20180417152208-081e1cb2de4b h1:sXSfgWmfQ95n8mWby14NsBBz9bpXvJzT3a9Gr2kSYDI=
+github.com/mschneider82/milter v1.1.2/go.mod h1:tO5zYqjX2wmwfver/a2lKFVXrNGauvUY5Y1RemvSbJ8=
 github.com/mschneider82/milterclient v0.0.0-20180417152208-081e1cb2de4b/go.mod h1:aT17FNxMNvVNjk2Kvpz6Dzpbjw2s5GTPiTOjTj7uNWI=
-github.com/phalaaxx/milter v0.0.0-20190809081256-3fbd661ff459 h1:5kK/Cr8N1Ir1QEmdqjZyBDAIQQCMBBNsRwdJR7jVD80=
+github.com/mschneider82/milterclient v0.0.0-20191210092858-6c7cf5b778f0 h1:YNVPhcCZzpyeC+bEMcjUYPO0x2FcBisUAZ64AuKOFVw=
+github.com/mschneider82/milterclient v0.0.0-20191210092858-6c7cf5b778f0/go.mod h1:lMwEdshxgvrMcN+Ok0mTvY6MAdZSR8CYydBQnvbSLTI=
 github.com/phalaaxx/milter v0.0.0-20190809081256-3fbd661ff459/go.mod h1:CCDGSeT1mS/L54GyiT/VNpBYpx84PUrPU+DazSVGpOk=
