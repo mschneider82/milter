@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
-	"log"
 	"math/rand"
 	"net"
 	"net/textproto"
@@ -241,7 +240,7 @@ func (m *milterSession) Process(msg *Message) (Response, error) {
 
 	default:
 		// print error and close session
-		log.Printf("Unrecognized command code: %c", msg.Code)
+		m.logger.Printf("Unrecognized command code: %c", msg.Code)
 		return nil, ErrCloseSession
 	}
 
