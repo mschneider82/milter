@@ -1,7 +1,6 @@
 package milter_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 
@@ -13,15 +12,17 @@ type Session struct {
 	milter.DefaultSession
 }
 
+// Body in this case we just want to show some chars of the mail
+// All other Interactions are done by DefaultSession implementation
 func (s *Session) Body(m *milter.Modifier) (milter.Response, error) {
 	b, _ := ioutil.ReadAll(s.Message)
 	log.Printf("Mail's first 100 chars: %s", string(b[0:100]))
 	return milter.RespAccept, nil
 }
 
-func ExampleRun() {
+func Example() {
 	panichandler := func(e error) {
-		fmt.Printf("Panic happend: %s\n", e.Error())
+		log.Printf("Panic happend: %s\n", e.Error())
 	}
 
 	setsymlist := make(milter.RequestMacros)
