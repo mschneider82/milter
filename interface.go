@@ -5,8 +5,8 @@ import (
 	"net/textproto"
 )
 
-// Milter is an interface for milter callback handlers
-type Milter interface {
+// SessionHandler is an interface for milter callback handlers
+type SessionHandler interface {
 	// Init is called on begin of a new Mail, before Connect() and before MailFrom()
 	// Can be used to Reset session state
 	// On MailFrom mailID is available

@@ -11,20 +11,9 @@ import (
 
 var defaultServer Server
 
-// MilterInit initializes milter options
+// MilterFactory initializes milter options
 // multiple options can be set using a bitmask
-type MilterInit func() (Milter, OptAction, OptProtocol)
-
-// RunServer provides a convenient way to start a milter server
-// Handlers provide way to handle errors from panics
-// With nil handlers panics not recovered
-func RunServer(server net.Listener, logger Logger, init MilterInit, handlers ...func(error)) error {
-	defaultServer.Listener = server
-	defaultServer.MilterFactory = init
-	defaultServer.ErrHandlers = handlers
-	defaultServer.Logger = logger
-	return defaultServer.RunServer()
-}
+type MilterFactory func() (SessionHandler, OptAction, OptProtocol, RequestMacros)
 
 // Close server listener and wait worked process
 func Close() {
@@ -35,71 +24,74 @@ func Close() {
 // support panic handling via ErrHandler
 // couple of func(error) could be provided for handling error
 type Server struct {
-	Listener       net.Listener
-	MilterFactory  MilterInit
-	ErrHandlers    []func(error)
-	Logger         Logger
-	SymListFactory *SymListFactory // SymListFactory Optional: Set the list of macros that the milter wants to receive from the MTA for a protocol stage.
-	sync.WaitGroup
-	quit   chan struct{}
-	exited chan struct{}
+	listener      net.Listener
+	milterFactory MilterFactory
+	errHandlers   []func(error)
+	logger        CustomLogger
+	wg            sync.WaitGroup
+	quit          chan struct{}
+	exited        chan struct{}
 }
 
-// SymListFactory Factory to Set the list of macros that the milter wants to receive from the MTA for a protocol Stage (stages has the prefix SMFIM_).
-type SymListFactory struct {
-	m map[Stage]string
-}
-
-// Set the list of macros that the milter wants to receive from the MTA for a protocol Stage (stages has the prefix SMFIM_).
-// list of macros (separated by space). Example: "{rcpt_mailer} {rcpt_host}"
-func (s *SymListFactory) Set(stage Stage, macros string) {
-	if s.m == nil {
-		s.m = make(map[Stage]string)
+// New generates a new Server
+func New(milterfactory MilterFactory, lopt ListenerOption, opts ...Option) *Server {
+	server := &Server{
+		milterFactory: milterfactory,
+		logger:        stdoutLogger{},
+		wg:            sync.WaitGroup{},
 	}
-	s.m[stage] = macros
+	lopt.lapply(server)
+	for _, opt := range opts {
+		opt.apply(server)
+	}
+	return server
 }
+
+// RequestMacros - Also known as SetSymList: the list of macros that the milter wants to receive from the MTA for a protocol Stage (stages has the prefix SMFIM_).
+// if nil, then there are not Macros requested and the default macros from MTA are used.
+type RequestMacros map[Stage][]Macro
 
 // Close for graceful shutdown
 // Stop accepting new connections
 // And wait until processing connections ends
 func (s *Server) Close() error {
 	close(s.quit)
-	s.Listener.Close()
+	s.listener.Close()
 	<-s.exited
 	return nil
 }
 
-// RunServer starts milter server via provided listener
-func (s *Server) RunServer() error {
-	if s.Listener == nil {
-		return errors.New("no listen addr specified")
+// Run starts milter server via provided listener
+func (s *Server) Run() error {
+	if s.listener == nil {
+		return ErrNoListenAddr
 	}
 	s.quit = make(chan struct{})
 	s.exited = make(chan struct{})
 	for {
 		select {
 		case <-s.quit:
-			s.Wait()
+			s.wg.Wait()
 			close(s.exited)
 			return nil
 		default:
-			conn, err := s.Listener.Accept()
+			conn, err := s.listener.Accept()
 			if err != nil {
 				if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
 					continue
 				}
-				s.Logger.Printf("Error: Failed to accept connection: %s", err.Error())
+				s.logger.Printf("Error: Failed to accept connection: %s", err.Error())
 				time.Sleep(200 * time.Millisecond)
 				continue
 			}
 			if conn == nil {
-				s.Logger.Printf("Error: conn is nil")
+				s.logger.Printf("Error: conn is nil")
 				continue
 			}
-			s.Add(1)
+			s.wg.Add(1)
 			go func() {
-				defer handlePanic(s.ErrHandlers)
-				defer s.Done()
+				defer handlePanic(s.errHandlers)
+				defer s.wg.Done()
 				s.handleCon(conn)
 			}()
 		}
@@ -109,18 +101,15 @@ func (s *Server) RunServer() error {
 // Handle incoming connections
 func (s *Server) handleCon(conn net.Conn) {
 	// create milter object
-	milter, actions, protocol := s.MilterFactory()
-	var symlists map[Stage]string
-	if s.SymListFactory != nil {
-		symlists = s.SymListFactory.m
-	}
+	milter, actions, protocol, requestmacros := s.milterFactory()
+
 	session := milterSession{
 		actions:  actions,
 		protocol: protocol,
 		sock:     conn,
 		milter:   milter,
-		logger:   s.Logger,
-		symlists: symlists,
+		logger:   s.logger,
+		symlists: requestmacros,
 	}
 	// handle connection commands
 	session.HandleMilterCommands()

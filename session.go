@@ -19,11 +19,11 @@ type milterSession struct {
 	sock      io.ReadWriteCloser
 	headers   textproto.MIMEHeader
 	macros    map[string]string
-	symlists  map[Stage]string
-	milter    Milter
+	symlists  RequestMacros
+	milter    SessionHandler
 	sessionID string
 	mailID    string
-	logger    Logger
+	logger    CustomLogger
 }
 
 func init() {
@@ -212,9 +212,13 @@ func (m *milterSession) Process(msg *Message) (Response, error) {
 				if err := binary.Write(buffer, binary.BigEndian, uint32(stage)); err != nil {
 					return nil, err
 				}
-
+				var macrosStrSlice []string
+				for _, macro := range macros {
+					macrosStrSlice = append(macrosStrSlice, string(macro))
+				}
+				macrosStr := strings.Join(macrosStrSlice, " ")
 				// add header name and value to buffer
-				data := []byte(macros + null)
+				data := []byte(macrosStr + null)
 				if _, err := buffer.Write(data); err != nil {
 					return nil, err
 				}

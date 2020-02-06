@@ -1,4 +1,4 @@
-package milter
+package milter_test
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 
 	"io"
 
+	"github.com/mschneider82/milter"
 	"github.com/mschneider82/milterclient"
 )
 
@@ -30,34 +31,36 @@ func (e *TestMilter) Disconnect() {
 	return
 }
 
-func (e *TestMilter) Connect(name, value string, port uint16, ip net.IP, m *Modifier) (Response, error) {
-	return RespContinue, nil
+func (e *TestMilter) Connect(name, value string, port uint16, ip net.IP, m *milter.Modifier) (milter.Response, error) {
+	return milter.RespContinue, nil
 }
 
-func (e *TestMilter) Helo(h string, m *Modifier) (Response, error) { return RespContinue, nil }
-
-func (e *TestMilter) MailFrom(name string, m *Modifier) (Response, error) {
-	return RespContinue, nil
+func (e *TestMilter) Helo(h string, m *milter.Modifier) (milter.Response, error) {
+	return milter.RespContinue, nil
 }
 
-func (e *TestMilter) RcptTo(name string, m *Modifier) (Response, error) {
-	return RespContinue, nil
+func (e *TestMilter) MailFrom(name string, m *milter.Modifier) (milter.Response, error) {
+	return milter.RespContinue, nil
+}
+
+func (e *TestMilter) RcptTo(name string, m *milter.Modifier) (milter.Response, error) {
+	return milter.RespContinue, nil
 }
 
 /* handle headers one by one */
-func (e *TestMilter) Header(name, value string, m *Modifier) (Response, error) {
+func (e *TestMilter) Header(name, value string, m *milter.Modifier) (milter.Response, error) {
 	// if message has multiple parts set processing flag to true
 	if name == "Content-Type" && strings.HasPrefix(value, "multipart/") {
 		e.multipart = true
 	}
-	return RespContinue, nil
+	return milter.RespContinue, nil
 }
 
 /* at end of headers initialize message buffer and add headers to it */
-func (e *TestMilter) Headers(headers textproto.MIMEHeader, m *Modifier) (Response, error) {
+func (e *TestMilter) Headers(headers textproto.MIMEHeader, m *milter.Modifier) (milter.Response, error) {
 	// return accept if not a multipart message
 	if !e.multipart {
-		return RespAccept, nil
+		return milter.RespAccept, nil
 	}
 	// prepare message buffer
 	e.message = new(bytes.Buffer)
@@ -73,20 +76,20 @@ func (e *TestMilter) Headers(headers textproto.MIMEHeader, m *Modifier) (Respons
 		return nil, err
 	}
 	// continue with milter processing
-	return RespContinue, nil
+	return milter.RespContinue, nil
 }
 
 // accept body chunk
-func (e *TestMilter) BodyChunk(chunk []byte, m *Modifier) (Response, error) {
+func (e *TestMilter) BodyChunk(chunk []byte, m *milter.Modifier) (milter.Response, error) {
 	// save chunk to buffer
 	if _, err := e.message.Write(chunk); err != nil {
 		return nil, err
 	}
-	return RespContinue, nil
+	return milter.RespContinue, nil
 }
 
 /* Body is called when email message body has been sent */
-func (e *TestMilter) Body(m *Modifier) (Response, error) {
+func (e *TestMilter) Body(m *milter.Modifier) (milter.Response, error) {
 	// prepare buffer
 	_ = bytes.NewReader(e.message.Bytes())
 	fmt.Println("size of body: ", e.message.Len())
@@ -99,7 +102,7 @@ func (e *TestMilter) Body(m *Modifier) (Response, error) {
 	m.ReplaceBody([]byte("new body"))
 
 	// accept message by default
-	return RespAccept, nil
+	return milter.RespAccept, nil
 }
 
 type logger struct{}
@@ -108,53 +111,33 @@ func (f logger) Printf(format string, v ...interface{}) {
 	fmt.Printf(format, v...)
 }
 
-/* myRunServer creates new Milter instance */
-func myRunServer(socket net.Listener) {
-	// declare milter init function
-	init := func() (Milter, OptAction, OptProtocol) {
-		return &TestMilter{},
-			OptAddHeader | OptChangeHeader | OptChangeFrom | OptAddRcpt | OptRemoveRcpt | OptChangeBody,
-			OptNoRcptTo
-	}
-
-	errhandler := func(e error) {
+/* main program */
+func TestMilterClient(t *testing.T) {
+	panichandler := func(e error) {
 		fmt.Printf("Panic happend: %s\n", e.Error())
 	}
 
-	symlist := SymListFactory{}
-	symlist.Set(SMFIM_CONNECT, "{daemon_name} {client_addr}")
+	setsymlist := make(milter.RequestMacros)
+	setsymlist[milter.SMFIM_CONNECT] = []milter.Macro{milter.MACRO_DAEMON_NAME, milter.Macro("{client_addr}")}
 
-	server := Server{
-		Listener:       socket,
-		MilterFactory:  init,
-		ErrHandlers:    []func(error){errhandler},
-		Logger:         &logger{},
-		SymListFactory: &symlist,
+	milterfactory := func() (milter.SessionHandler, milter.OptAction, milter.OptProtocol, milter.RequestMacros) {
+		return &TestMilter{},
+			milter.OptAddHeader | milter.OptChangeHeader | milter.OptChangeFrom | milter.OptAddRcpt | milter.OptRemoveRcpt | milter.OptChangeBody,
+			0,
+			setsymlist
 	}
-	defer server.Close()
-	// start server
-	err := server.RunServer()
-	if err != nil {
-		fmt.Printf("Error happened: %s\n", err.Error())
-	}
-
-}
-
-/* main program */
-func TestMilterClient(t *testing.T) {
-
-	// parse commandline arguments
-	protocol := "tcp"
-	address := "127.0.0.1:12349"
-
-	// bind to listening address
-	socket, err := net.Listen(protocol, address)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// run server
-	go myRunServer(socket)
+	m := milter.New(milterfactory,
+		milter.WithTCPListener("127.0.0.1:12349"),
+		milter.WithLogger(milter.StdOutLogger),
+		milter.WithPanicHandler(panichandler),
+	)
+	go func() {
+		err := m.Run()
+		if err != nil {
+			log.Fatalf("Error: %s", err.Error())
+		}
+	}()
+	defer m.Close()
 
 	// run tests:
 	emlFilePath := "testmail.eml"
@@ -179,8 +162,7 @@ func TestMilterClient(t *testing.T) {
 	}
 
 	fmt.Printf("MsgId: %s, Lastmilter code: %s\n", msgID, string(last))
-	if last != SMFIR_CHGFROM {
+	if last != milter.SMFIR_CHGFROM {
 		t.Errorf("Excepted Accept from Milter, got %v", last)
 	}
-
 }

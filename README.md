@@ -2,7 +2,7 @@
 
 # milter
 
-This is a fork of github.com/phalaaxx/milter, added the following pull requests:
+This is a heavily fork of github.com/phalaaxx/milter, added the following pull requests:
 
 * https://github.com/phalaaxx/milter/pull/16
 * https://github.com/phalaaxx/milter/pull/14
@@ -22,3 +22,12 @@ and also _test cases using my [milterclient](https://github.com/mschneider82/mil
 * Added all Protocol Options and Actions from libmilter (session.go)
 * Added SymListFactory to Set the list of macros that the milter wants to receive from the MTA for a protocol stage
 * Refactored to common consts names for Milter Commands
+
+### Breaking Changes for v2:
+
+* Breaking API Changes.
+* Changed to functional options
+* New Interface names
+* Added RequestMacros (SetSymlist) to MilterFactory
+* See example_test.go and server_test.go howto use this Library.
+* Added DefaultSession as basic implementation (can be used or not.)

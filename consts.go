@@ -64,13 +64,41 @@ const (
 	SMFIM_EOH                  /* 6 = end of header */
 )
 
+// Macro http://www.postfix.org/MILTER_README.html#macros
+type Macro string
+
+const (
+	MACRO_QUEUEID                 Macro = "i"                    // DATA, EOH, EOM	- Queue ID, also Postfix queue file name
+	MACRO_MYHOSTNAME              Macro = "j"                    // Always - Value of myhostname
+	MACRO_VALIDCLIENTNAME         Macro = "_"                    // Always	- The validated client name and address
+	MACRO_AUTH_SASL_LOGINNAME     Macro = "{auth_authen}"        // MAIL, DATA, EOH, EOM - SASL login name
+	MACRO_AUTH_SASL_SENDER        Macro = "{auth_author}"        // MAIL, DATA, EOH, EOM - SASL sender
+	MACRO_AUTH_SASL_LOGINMETHOD   Macro = "{auth_type}"          // MAIL, DATA, EOH, EOM - SASL login method
+	MACRO_REMOTECLIENTIP          Macro = "{client_addr}"        // Always - Remote client IP address
+	MACRO_CLIENT_CONNECTIONS      Macro = "{client_connections}" // CONNECT - Connection concurrency for this client (zero if the client is excluded from all smtpd_client_* limits).
+	MACRO_CLIENT_NAME             Macro = "{client_name}"        // Always	- Remote client hostname address → name lookup or name → address verification fails: "unknown"
+	MACRO_CLIENT_TCPPORT          Macro = "{client_port}"        // Always (Postfix ≥2.5) - Remote client TCP port
+	MACRO_CLIENT_PTR              Macro = "{client_ptr}"         // CONNECT, HELO, MAIL, DATA - Client name from address → name lookup address → name lookup fails: "unknown"
+	MACRO_CLIENT_TLS_CERT_ISSUER  Macro = "{cert_issuer}"        // HELO, MAIL, DATA, EOH, EOM	- TLS client certificate issuer
+	MACRO_CLIENT_TLS_CERT_SUBJECT Macro = "{cert_subject}"       // HELO, MAIL, DATA, EOH, EOM	- TLS client certificate subject
+	MACRO_CLIENT_TLS_CIPHER_BITS  Macro = "{cipher_bits}"        // HELO, MAIL, DATA, EOH, EOM	- TLS session key size
+	MACRO_CLIENT_TLS_CIPHER       Macro = "{cipher}"             // HELO, MAIL, DATA, EOH, EOM	- TLS cipher
+	MACRO_DAEMON_ADDR             Macro = "{daemon_addr}"        // Always (Postfix ≥3.2) - Local server IP address
+	MACRO_DAEMON_NAME             Macro = "{daemon_name}"        // Always	- value of milter_macro_daemon_name
+	MACRO_DAEMON_PORT             Macro = "{daemon_port}"        // Always (Postfix ≥3.2) -Local server TCP port
+	MACRO_MAIL_ADDR               Macro = "{mail_addr}"          // MAIL - Sender address
+	MACRO_MAIL_HOST               Macro = "{mail_host}"          // MAIL (Postfix ≥ 2.6, only with smtpd_milters) - Sender next-hop destination
+	MACRO_MAIL_MAILER             Macro = "{mail_mailer}"        // MAIL (Postfix ≥ 2.6, only with smtpd_milters) - Sender mail delivery transport
+	MACRO_RCPT_ADDR               Macro = "{rcpt_addr}"          // RCPT - Recipient address with rejected recipient: descriptive text
+	MACRO_RCPT_HOST               Macro = "{rcpt_host}"          // RCPT (Postfix ≥ 2.6, only with smtpd_milters) - Recipient next-hop destination with rejected recipient: enhanced status code
+	MACRO_RCPT_MAILER             Macro = "{rcpt_mailer}"        // RCPT (Postfix ≥ 2.6, only with smtpd_milters) - Recipient mail delivery transport With Protocol Stage: rejected recipient: "error"
+	MACRO_TLS_VERSION             Macro = "{tls_version}"        // HELO, MAIL, DATA, EOH, EOM	- TLS protocol version
+	MACRO_V                       Macro = "v"                    // Always - value of milter_macro_v (default: $mail_name $mail_version)
+)
+
 // OptAction sets which actions the milter wants to perform.
 // Multiple options can be set using a bitmask.
 type OptAction uint32
-
-// OptProtocol masks out unwanted parts of the SMTP transaction.
-// Multiple options can be set using a bitmask.
-type OptProtocol uint32
 
 const (
 	// set which actions the milter wants to perform
@@ -86,7 +114,13 @@ const (
 	OptSetSymList     OptAction = 0x100 /* SMFIF_SETSYMLIST filter can send set of symbols (macros) that it wants */
 	// OptAllActions SMFI_CURR_ACTS Set of all actions in the current milter version */
 	OptAllActions OptAction = OptAddHeader | OptChangeBody | OptAddRcpt | OptRemoveRcpt | OptChangeHeader | OptQuarantine | OptChangeFrom | OptAddRcptPartial | OptSetSymList
+)
 
+// OptProtocol masks out unwanted parts of the SMTP transaction.
+// Multiple options can be set using a bitmask.
+type OptProtocol uint32
+
+const (
 	// mask out unwanted parts of the SMTP transaction
 	OptNoConnect    OptProtocol = 0x01       /* SMFIP_NOCONNECT MTA should not send connect info */
 	OptNoHelo       OptProtocol = 0x02       /* SMFIP_NOHELO MTA should not send HELO info */
