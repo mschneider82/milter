@@ -1,4 +1,4 @@
-module github.com/mschneider82/milter
+module github.com/mschneider82/milter/v2
 
 go 1.13
 
