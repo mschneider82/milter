@@ -190,7 +190,7 @@ func (m *milterSession) Process(msg *Message) (Response, error) {
 		m.milter.Init(m.sessionID, m.mailID)
 		// envelope from address
 		envfrom := readCString(msg.Data)
-		return m.milter.MailFrom(strings.ToLower(strings.Trim(envfrom, "<>")), newModifier(m))
+		return m.milter.MailFrom(strings.Trim(envfrom, "<>"), newModifier(m))
 
 	case SMFIC_EOH:
 		// end of headers
@@ -237,7 +237,7 @@ func (m *milterSession) Process(msg *Message) (Response, error) {
 		// RCPT TO: information
 		// envelope to address
 		envto := readCString(msg.Data)
-		return m.milter.RcptTo(strings.ToLower(strings.Trim(envto, "<>")), newModifier(m))
+		return m.milter.RcptTo(strings.Trim(envto, "<>"), newModifier(m))
 
 	case SMFIC_DATA:
 		// data, ignore
