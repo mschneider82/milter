@@ -91,6 +91,8 @@ func (m *milterSession) WritePacket(msg *Message) error {
 	return nil
 }
 
+var ipv6prefix = []byte("IPv6:")
+
 // Process processes incoming milter commands
 func (m *milterSession) Process(msg *Message) (Response, error) {
 	switch msg.Code {
@@ -127,7 +129,10 @@ func (m *milterSession) Process(msg *Message) (Response, error) {
 			Port = binary.BigEndian.Uint16(msg.Data)
 			msg.Data = msg.Data[2:]
 			if protocolFamily == SMFIA_INET6 {
-				msg.Data = msg.Data[5:] // ipv6 is in format IPv6:XXX:XX1
+				// trim IPv6 prefix when necessary
+				if bytes.HasPrefix(msg.Data, ipv6prefix) {
+					msg.Data = bytes.TrimPrefix(msg.Data, ipv6prefix)
+				}
 			}
 		}
 		// get address
