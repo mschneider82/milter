@@ -128,11 +128,9 @@ func (m *milterSession) Process(msg *Message) (Response, error) {
 			}
 			Port = binary.BigEndian.Uint16(msg.Data)
 			msg.Data = msg.Data[2:]
-			if protocolFamily == SMFIA_INET6 {
-				// trim IPv6 prefix when necessary
-				if bytes.HasPrefix(msg.Data, ipv6prefix) {
-					msg.Data = bytes.TrimPrefix(msg.Data, ipv6prefix)
-				}
+			// trim IPv6 prefix when necessary
+			if bytes.HasPrefix(msg.Data, ipv6prefix) {
+				msg.Data = bytes.TrimPrefix(msg.Data, ipv6prefix)
 			}
 		}
 		// get address
