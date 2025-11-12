@@ -32,7 +32,7 @@ func init() {
 
 // genRandomID generates an random ID. vocals are removed to prevent dirty words which could be negative in spam score
 func (c *milterSession) genRandomID(length int) string {
-	var letters = []rune("bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ")
+	letters := []rune("bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ")
 	b := make([]rune, length)
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
@@ -180,10 +180,16 @@ func (m *milterSession) Process(msg *Message) (Response, error) {
 		}
 		// add new header to headers map
 		HeaderData := decodeCStrings(msg.Data)
-		if len(HeaderData) == 2 {
-			m.headers.Add(HeaderData[0], HeaderData[1])
+		// Handle headers with values (len=2) and empty header values (len=1)
+		if len(HeaderData) >= 1 {
+			name := HeaderData[0]
+			value := ""
+			if len(HeaderData) >= 2 {
+				value = HeaderData[1]
+			}
+			m.headers.Add(name, value)
 			// call and return milter handler
-			return m.milter.Header(HeaderData[0], HeaderData[1], newModifier(m))
+			return m.milter.Header(name, value, newModifier(m))
 		}
 
 	case SMFIC_MAIL:
@@ -257,7 +263,6 @@ func (m *milterSession) Process(msg *Message) (Response, error) {
 
 // HandleMilterComands processes all milter commands in the same connection
 func (m *milterSession) HandleMilterCommands() {
-
 	defer m.sock.Close()
 	defer m.milter.Disconnect()
 
